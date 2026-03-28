@@ -7,9 +7,8 @@ st.title("🌎 Universal AAMVA Master System")
 st.caption("v14.0 - Full 68-Jurisdiction Database | Complete Manual Entry Suite")
 
 # --- 2. FULL MASTER IIN DATABASE (68 JURISDICTIONS) ---
-# Extracted from official AAMVA/PDF mappings to prevent all state-ghosting errors.
 MASTER_DB = {
-    # US STATES & DC
+    # US STATES & DC (your existing database - unchanged)
     "AL": {"iin": "636033", "name": "Alabama"}, "AK": {"iin": "636059", "name": "Alaska"},
     "AZ": {"iin": "636026", "name": "Arizona"}, "AR": {"iin": "636021", "name": "Arkansas"},
     "CA": {"iin": "636014", "name": "California"}, "CO": {"iin": "636020", "name": "Colorado"},
@@ -36,11 +35,10 @@ MASTER_DB = {
     "VA": {"iin": "636000", "name": "Virginia"}, "WA": {"iin": "636045", "name": "Washington"},
     "WV": {"iin": "636061", "name": "West Virginia"}, "WI": {"iin": "636030", "name": "Wisconsin"},
     "WY": {"iin": "636060", "name": "Wyoming"},
-    # US TERRITORIES
+    # US TERRITORIES & CANADA (unchanged)
     "AS": {"iin": "604427", "name": "American Samoa"}, "GU": {"iin": "636019", "name": "Guam"},
     "MP": {"iin": "604430", "name": "Northern Mariana Islands"}, "PR": {"iin": "604431", "name": "Puerto Rico"},
     "VI": {"iin": "636062", "name": "U.S. Virgin Islands"},
-    # CANADIAN PROVINCES
     "AB": {"iin": "604432", "name": "Alberta"}, "BC": {"iin": "636028", "name": "British Columbia"},
     "MB": {"iin": "636031", "name": "Manitoba"}, "NB": {"iin": "636013", "name": "New Brunswick"},
     "NL": {"iin": "636027", "name": "Newfoundland and Labrador"}, "NS": {"iin": "636017", "name": "Nova Scotia"},
@@ -49,7 +47,6 @@ MASTER_DB = {
 }
 
 # --- 3. UI LAYOUT ---
-# Jurisdiction Selection (Updates Header IIN automatically)
 selected_abbr = st.selectbox("Select Jurisdiction", sorted(list(MASTER_DB.keys())), 
                              format_func=lambda x: f"{x} - {MASTER_DB[x]['name']}")
 iin = MASTER_DB[selected_abbr]["iin"]
@@ -64,7 +61,13 @@ with col1:
     m_name = st.text_input("Middle Name (DAD)", "james")
     l_name = st.text_input("Last Name (DCS)", "macharia")
     suffix = st.text_input("Suffix (DCU)", "")
-    dob = st.date_input("Date of Birth (DBB)", date(1977, 12, 16))
+    
+    # No year limit for Date of Birth
+    dob = st.date_input("Date of Birth (DBB)", 
+                        value=date(1977, 12, 16),
+                        min_value=date(1900, 1, 1),   # You can change or remove this
+                        max_value=date(2100, 12, 31)) # You can change or remove this
+
     gender = st.selectbox("Sex (DBC)", ["Male (1)", "Female (2)"])
     race = st.text_input("Race / Ethnicity (DCL)", "bk")
     ssn = st.text_input("Social Security Num (DBK)", "")
@@ -86,8 +89,19 @@ with col3:
     dln = st.text_input("Customer ID (DAQ)", "40534413")
     dd_val = st.text_input("Document Discriminator (DCF)", "06629180138093952956")
     audit = st.text_input("Inventory Control / Audit (DCJ)", "10006088295")
-    iss_date = st.date_input("Issue Date (DBD)", date(2022, 1, 22))
-    exp_date = st.date_input("Expiry Date (DBA)", date(2027, 12, 16))
+    
+    # No year limit for Issue Date
+    iss_date = st.date_input("Issue Date (DBD)", 
+                             value=date(2022, 1, 22),
+                             min_value=date(1900, 1, 1),
+                             max_value=date(2100, 12, 31))
+    
+    # No year limit for Expiry Date
+    exp_date = st.date_input("Expiry Date (DBA)", 
+                             value=date(2027, 12, 16),
+                             min_value=date(1900, 1, 1),
+                             max_value=date(2100, 12, 31))
+    
     rev_date = st.text_input("Card Revision Date (DDB)", "11122019")
     compliance = st.text_input("Compliance Type (DDA)", "n")
     
@@ -100,31 +114,27 @@ with col3:
 # --- 4. GENERATION LOGIC ---
 if st.button("Generate Master AAMVA String", type="primary", use_container_width=True):
     
-    # Map all fields including physicals and document metadata
     fields = [
         ("DAC", f_name.upper()), ("DCS", l_name.upper()), ("DAD", m_name.upper()),
         ("DCU", suffix.upper()), ("DBB", dob.strftime("%m%d%Y")),
         ("DBA", exp_date.strftime("%m%d%Y")), ("DBD", iss_date.strftime("%m%d%Y")),
         ("DAU", height), ("DAY", eyes.upper()), ("DAZ", hair.upper()),
         ("DAW", weight_lb), ("DAX", weight_kg),
-        ("DBC", gender[-2]), # Extracts 1 or 2
+        ("DBC", gender[-2] if len(gender) > 1 else gender),
         ("DCL", race.upper()), ("DBK", ssn),
         ("DAG", addr.upper()), ("DAI", city.upper()),
         ("DAJ", selected_abbr), ("DAK", zipc), ("DCG", country.upper()),
         ("DAQ", dln.upper()), ("DCF", dd_val.upper()), ("DCJ", audit.upper()),
         ("DDA", compliance.upper()), ("DDB", rev_date), ("DDK", donor),
         ("DCA", v_class.upper()), ("DCB", restr.upper()), ("DCD", endors.upper()),
-        ("DDE", "N"), ("DDF", "N"), ("DDG", "N") # Standard Truncation Flags
+        ("DDE", "N"), ("DDF", "N"), ("DDG", "N")
     ]
 
-    # String Assembly (Byte-Perfect for BarKoder)
     LF, RS, CR = "\\n", "\\x1E", "\\r"
     
-    # data_body: Filter for filled values to keep the subfile clean
     data_body = "".join(f"{LF}{code}{val}" for code, val in fields if val)
     sub = f"DL{data_body}{LF}"
     
-    # Official Header using dynamic IIN from full database
     header = f"@{LF}{RS}{CR}ANSI {iin}080001DL0045{len(sub):04d}"
     final_string = f"{header}{sub}ZVA01{CR}"
 
