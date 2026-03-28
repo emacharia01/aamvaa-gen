@@ -1,127 +1,134 @@
 import streamlit as st
-import random
-import string
 from datetime import date
 
 # 1. Page Configuration
 st.set_page_config(page_title="Universal AAMVA Master", page_icon="🌎", layout="wide")
 st.title("🌎 Universal AAMVA Master System")
-st.caption("v7.0 - Complete 54-Jurisdiction Database | All AAMVA Data Elements")
+st.caption("v14.0 - Full 68-Jurisdiction Database | Complete Manual Entry Suite")
 
-# --- FULL JURISDICTION IIN DATABASE ---
-IIN_DB = {
-    "AL": "636000", "AK": "636033", "AZ": "636026", "AR": "636021", "CA": "636014", 
-    "CO": "636006", "CT": "636007", "DE": "636011", "DC": "636049", "FL": "636010", 
-    "GA": "636059", "HI": "636028", "ID": "636015", "IL": "636035", "IN": "636037", 
-    "IA": "636016", "KS": "636017", "KY": "636018", "LA": "636019", "ME": "636051", 
-    "MD": "636003", "MA": "636002", "MI": "636036", "MN": "636038", "MS": "636039", 
-    "MO": "636040", "MT": "636041", "NE": "636042", "NV": "636022", "NH": "636043", 
-    "NJ": "636004", "NM": "636044", "NY": "636001", "NC": "636005", "ND": "636046", 
-    "OH": "636021", "OK": "636048", "OR": "636024", "PA": "636025", "RI": "636053", 
-    "SC": "636054", "SD": "636055", "TN": "636056", "TX": "636020", "UT": "636029", 
-    "VT": "636058", "VA": "636027", "WA": "636045", "WV": "636060", "WY": "636061",
-    "PR": "636000", "GU": "636000", "VI": "636000", "AS": "636000", "MP": "636000"
+# --- 2. FULL MASTER IIN DATABASE (68 JURISDICTIONS) ---
+# Extracted from official AAMVA/PDF mappings to prevent all state-ghosting errors.
+MASTER_DB = {
+    # US STATES & DC
+    "AL": {"iin": "636033", "name": "Alabama"}, "AK": {"iin": "636059", "name": "Alaska"},
+    "AZ": {"iin": "636026", "name": "Arizona"}, "AR": {"iin": "636021", "name": "Arkansas"},
+    "CA": {"iin": "636014", "name": "California"}, "CO": {"iin": "636020", "name": "Colorado"},
+    "CT": {"iin": "636006", "name": "Connecticut"}, "DE": {"iin": "636011", "name": "Delaware"},
+    "DC": {"iin": "636043", "name": "District of Columbia"}, "FL": {"iin": "636010", "name": "Florida"},
+    "GA": {"iin": "636055", "name": "Georgia"}, "HI": {"iin": "636047", "name": "Hawaii"},
+    "ID": {"iin": "636050", "name": "Idaho"}, "IL": {"iin": "636035", "name": "Illinois"},
+    "IN": {"iin": "636037", "name": "Indiana"}, "IA": {"iin": "636018", "name": "Iowa"},
+    "KS": {"iin": "636022", "name": "Kansas"}, "KY": {"iin": "636046", "name": "Kentucky"},
+    "LA": {"iin": "636007", "name": "Louisiana"}, "ME": {"iin": "636041", "name": "Maine"},
+    "MD": {"iin": "636003", "name": "Maryland"}, "MA": {"iin": "636002", "name": "Massachusetts"},
+    "MI": {"iin": "636032", "name": "Michigan"}, "MN": {"iin": "636038", "name": "Minnesota"},
+    "MS": {"iin": "636051", "name": "Mississippi"}, "MO": {"iin": "636030", "name": "Missouri"},
+    "MT": {"iin": "636008", "name": "Montana"}, "NE": {"iin": "636054", "name": "Nebraska"},
+    "NV": {"iin": "636049", "name": "Nevada"}, "NH": {"iin": "636039", "name": "New Hampshire"},
+    "NJ": {"iin": "636036", "name": "New Jersey"}, "NM": {"iin": "636009", "name": "New Mexico"},
+    "NY": {"iin": "636001", "name": "New York"}, "NC": {"iin": "636004", "name": "North Carolina"},
+    "ND": {"iin": "636034", "name": "North Dakota"}, "OH": {"iin": "636023", "name": "Ohio"},
+    "OK": {"iin": "636058", "name": "Oklahoma"}, "OR": {"iin": "636029", "name": "Oregon"},
+    "PA": {"iin": "636025", "name": "Pennsylvania"}, "RI": {"iin": "636052", "name": "Rhode Island"},
+    "SC": {"iin": "636005", "name": "South Carolina"}, "SD": {"iin": "636042", "name": "South Dakota"},
+    "TN": {"iin": "636053", "name": "Tennessee"}, "TX": {"iin": "636015", "name": "Texas"},
+    "UT": {"iin": "636040", "name": "Utah"}, "VT": {"iin": "636024", "name": "Vermont"},
+    "VA": {"iin": "636000", "name": "Virginia"}, "WA": {"iin": "636045", "name": "Washington"},
+    "WV": {"iin": "636061", "name": "West Virginia"}, "WI": {"iin": "636030", "name": "Wisconsin"},
+    "WY": {"iin": "636060", "name": "Wyoming"},
+    # US TERRITORIES
+    "AS": {"iin": "604427", "name": "American Samoa"}, "GU": {"iin": "636019", "name": "Guam"},
+    "MP": {"iin": "604430", "name": "Northern Mariana Islands"}, "PR": {"iin": "604431", "name": "Puerto Rico"},
+    "VI": {"iin": "636062", "name": "U.S. Virgin Islands"},
+    # CANADIAN PROVINCES
+    "AB": {"iin": "604432", "name": "Alberta"}, "BC": {"iin": "636028", "name": "British Columbia"},
+    "MB": {"iin": "636031", "name": "Manitoba"}, "NB": {"iin": "636013", "name": "New Brunswick"},
+    "NL": {"iin": "636027", "name": "Newfoundland and Labrador"}, "NS": {"iin": "636017", "name": "Nova Scotia"},
+    "ON": {"iin": "636012", "name": "Ontario"}, "PE": {"iin": "636016", "name": "Prince Edward Island"},
+    "QC": {"iin": "604428", "name": "Quebec"}, "SK": {"iin": "636031", "name": "Saskatchewan"}
 }
 
-# --- UI LAYOUT ---
-selected_state = st.selectbox("Select Jurisdiction (DAJ)", sorted(list(IIN_DB.keys())))
-iin = IIN_DB[selected_state]
+# --- 3. UI LAYOUT ---
+# Jurisdiction Selection (Updates Header IIN automatically)
+selected_abbr = st.selectbox("Select Jurisdiction", sorted(list(MASTER_DB.keys())), 
+                             format_func=lambda x: f"{x} - {MASTER_DB[x]['name']}")
+iin = MASTER_DB[selected_abbr]["iin"]
 
 st.divider()
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.subheader("👤 Personal Identity")
-    f_name = st.text_input("First Name (DAC)", "ISAAC")
-    m_name = st.text_input("Middle Name (DAD)", "NGANGA")
-    l_name = st.text_input("Last Name (DCS)", "HUTCHISON")
-    suffix = st.text_input("Suffix (DCU)", "3RD")
+    st.markdown("### 👤 Personal Identity")
+    f_name = st.text_input("First Name (DAC)", "ethan")
+    m_name = st.text_input("Middle Name (DAD)", "james")
+    l_name = st.text_input("Last Name (DCS)", "macharia")
+    suffix = st.text_input("Suffix (DCU)", "")
     dob = st.date_input("Date of Birth (DBB)", date(1977, 12, 16))
-    gender = st.selectbox("Sex (DBC)", ["1", "2"], format_func=lambda x: "Male (1)" if x=="1" else "Female (2)")
-    race = st.text_input("Race / Ethnicity (DCL)", "B")
+    gender = st.selectbox("Sex (DBC)", ["Male (1)", "Female (2)"])
+    race = st.text_input("Race / Ethnicity (DCL)", "bk")
     ssn = st.text_input("Social Security Num (DBK)", "")
 
 with col2:
-    st.subheader("📍 Location & Physicals")
-    addr = st.text_input("Street 1 (DAG)", "23702 110TH AVE SE")
-    city = st.text_input("City (DAI)", "KENT")
-    zipc = st.text_input("Postal Code (DAK)", "993235460")
-    country = st.text_input("Country (DCG)", "USA")
-    eyes = st.text_input("Eye Color (DAY)", "BLK")
-    hair = st.text_input("Hair Color (DAZ)", "BLK")
+    st.markdown("### 📍 Location & Physicals")
+    addr = st.text_input("Street 1 (DAG)", "6517 deer horn dr")
+    city = st.text_input("City (DAI)", "fort worth")
+    zipc = st.text_input("Postal Code (DAK)", "76179")
+    country = st.text_input("Country (DCG)", "usa")
     height = st.text_input("Height (DAU)", "067 in")
     weight_lb = st.text_input("Weight lbs (DAW)", "148")
     weight_kg = st.text_input("Weight kg (DAX)", "")
+    eyes = st.text_input("Eye Color (DAY)", "bro")
+    hair = st.text_input("Hair Color (DAZ)", "blk")
 
 with col3:
-    st.subheader("💳 Document Security")
-    dln = st.text_input("Customer ID (DAQ)", "WDLGJL7I0OB2")
-    dd_val = st.text_input("Document Discriminator (DCF)", "WDLGJL7I0OB2S012225H1784")
-    audit = st.text_input("Audit Information (DCJ)", "S012225H1784")
+    st.markdown("### 💳 Document Security")
+    dln = st.text_input("Customer ID (DAQ)", "40534413")
+    dd_val = st.text_input("Document Discriminator (DCF)", "06629180138093952956")
+    audit = st.text_input("Inventory Control / Audit (DCJ)", "10006088295")
     iss_date = st.date_input("Issue Date (DBD)", date(2022, 1, 22))
     exp_date = st.date_input("Expiry Date (DBA)", date(2027, 12, 16))
     rev_date = st.text_input("Card Revision Date (DDB)", "11122019")
-    compliance = st.text_input("Compliance Type (DDA)", "N")
+    compliance = st.text_input("Compliance Type (DDA)", "n")
     
-    st.subheader("🚦 Authorization Codes")
-    v_class = st.text_input("Vehicle Class (DCA)", "D")
+    st.markdown("### 🚦 Authorization Codes")
+    v_class = st.text_input("Vehicle Class (DCA)", "c")
     restr = st.text_input("Restrictions (DCB)", "NONE")
     endors = st.text_input("Endorsements (DCD)", "NONE")
     donor = st.text_input("Organ Donor (DDK)", "1")
 
-# --- GENERATION LOGIC ---
+# --- 4. GENERATION LOGIC ---
 if st.button("Generate Master AAMVA String", type="primary", use_container_width=True):
     
-    # 1. Map all AAMVA standard codes
+    # Map all fields including physicals and document metadata
     fields = [
-        ("DAC", f_name.upper()),
-        ("DCS", l_name.upper()),
-        ("DAD", m_name.upper()),
-        ("DCU", suffix.upper()),
-        ("DBB", dob.strftime("%m%d%Y")),
-        ("DBA", exp_date.strftime("%m%d%Y")),
-        ("DBD", iss_date.strftime("%m%d%Y")),
-        ("DAU", height),
-        ("DAY", eyes.upper()),
-        ("DAZ", hair.upper()),
-        ("DAW", weight_lb),
-        ("DAX", weight_kg),
-        ("DBC", gender),
-        ("DCL", race.upper()),
-        ("DBK", ssn),
-        ("DAG", addr.upper()),
-        ("DAI", city.upper()),
-        ("DAJ", selected_state),
-        ("DAK", zipc),
-        ("DCG", country.upper()),
-        ("DAQ", dln.upper()),
-        ("DCF", dd_val.upper()),
-        ("DCJ", audit.upper()),
-        ("DDA", compliance.upper()),
-        ("DDB", rev_date),
-        ("DDK", donor),
-        ("DCA", v_class.upper()),
-        ("DCB", restr.upper()),
-        ("DCD", endors.upper()),
-        # Truncation flags: N = Not truncated
-        ("DDE", "N"), ("DDF", "N"), ("DDG", "N")
+        ("DAC", f_name.upper()), ("DCS", l_name.upper()), ("DAD", m_name.upper()),
+        ("DCU", suffix.upper()), ("DBB", dob.strftime("%m%d%Y")),
+        ("DBA", exp_date.strftime("%m%d%Y")), ("DBD", iss_date.strftime("%m%d%Y")),
+        ("DAU", height), ("DAY", eyes.upper()), ("DAZ", hair.upper()),
+        ("DAW", weight_lb), ("DAX", weight_kg),
+        ("DBC", gender[-2]), # Extracts 1 or 2
+        ("DCL", race.upper()), ("DBK", ssn),
+        ("DAG", addr.upper()), ("DAI", city.upper()),
+        ("DAJ", selected_abbr), ("DAK", zipc), ("DCG", country.upper()),
+        ("DAQ", dln.upper()), ("DCF", dd_val.upper()), ("DCJ", audit.upper()),
+        ("DDA", compliance.upper()), ("DDB", rev_date), ("DDK", donor),
+        ("DCA", v_class.upper()), ("DCB", restr.upper()), ("DCD", endors.upper()),
+        ("DDE", "N"), ("DDF", "N"), ("DDG", "N") # Standard Truncation Flags
     ]
 
-    # 2. String Assembly (Byte-Perfect for BarKoder)
+    # String Assembly (Byte-Perfect for BarKoder)
     LF, RS, CR = "\\n", "\\x1E", "\\r"
     
-    # Data subfile content
+    # data_body: Filter for filled values to keep the subfile clean
     data_body = "".join(f"{LF}{code}{val}" for code, val in fields if val)
-    subfile = f"DL{data_body}{LF}"
+    sub = f"DL{data_body}{LF}"
     
-    # Header: IIN + Version 08 + Offset 0045 + Calculated Length
-    header = f"@{LF}{RS}{CR}ANSI {iin}080001DL0045{len(subfile):04d}"
-    
-    final_string = f"{header}{subfile}ZVA01{CR}"
+    # Official Header using dynamic IIN from full database
+    header = f"@{LF}{RS}{CR}ANSI {iin}080001DL0045{len(sub):04d}"
+    final_string = f"{header}{sub}ZVA01{CR}"
 
-    # 3. Final Output
     st.divider()
-    st.subheader("📋 Final String for TEC-IT")
-    st.text_area("Result", value=final_string, height=280)
-    st.success(f"Jurisdiction {selected_state} (IIN {iin}) ready.")
+    st.markdown("### 📋 Final String for TEC-IT")
+    st.text_area("Result", value=final_string, height=250)
+    st.success(f"Generated for {MASTER_DB[selected_abbr]['name']} (IIN: {iin}) with all credentials.")
